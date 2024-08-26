@@ -16,7 +16,10 @@ function parallel_quadrature(order, coefficients, bounds, num_pts_in, num_cpu_in
 
 	! Internal variables
 	integer :: num_pts, num_cpu, i, j
+	integer(8) :: wall_clock1, wall_clock2, wc_rate
 	real :: dx, xi, xf, quad, x, y
+
+	call SYSTEM_CLOCK(count=wall_clock1, count_rate=wc_rate)
 
 	! Sanity checks
 	if(order < 0) then
@@ -69,25 +72,28 @@ function parallel_quadrature(order, coefficients, bounds, num_pts_in, num_cpu_in
 	quad = quad + 0.5 * y
 
 	! Main loop, parallel
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i, j, x, y)
+!$OMP PARALLEL
 !$OMP MASTER
-	write(*, "(' Using ',i0,' threads...')") OMP_get_num_threads()
+	write(*, "(' Using ',i0,' thread(s)...')") OMP_get_num_threads()
 !$OMP END MASTER
-!$OMP DO
+! Use an OMP reduction to avoid using a CRITICAL section around the summation
+!$OMP DO REDUCTION(+:quad)
 	do i = 2, num_pts-1
 		x = xi + dx*(i-1)
 		y = 0.0
 		do j = 1,order+1
 			y = y + coefficients(j) * x**(j-1)
 		end do
-!$OMP CRITICAL
 		quad = quad + y
-!$OMP END CRITICAL
 	end do
 !$OMP END DO
 !$OMP END PARALLEL
 	! scale
 	quad = dx * quad
+
+	call SYSTEM_CLOCK(count=wall_clock2)
+
+	write(*, "(' Elapsed time (s): ',ES14.7)") real(wall_clock2 - wall_clock1) / real(wc_rate)
 
 end function parallel_quadrature
 
@@ -102,6 +108,15 @@ real :: quad
 real, dimension(:), allocatable :: coefficients
 real, dimension(2) :: bounds
 integer :: num_pts, num_cpu
+
+write(*,"('  _____        _____  ______ ____  _    _         _____  ')")
+write(*,"(' |  __ \ /\   |  __ \|  ____/ __ \| |  | |  /\   |  __ \ ')")
+write(*,"(' | |__) /  \  | |__) | |__ | |  | | |  | | /  \  | |  | |')")
+write(*,"(' |  ___/ /\ \ |  _  /|  __|| |  | | |  | |/ /\ \ | |  | |')")
+write(*,"(' | |  / ____ \| | \ \| |   | |__| | |__| / ____ \| |__| |')")
+write(*,"(' |_| /_/    \_\_|  \_\_|    \___\_\\____/_/    \_\_____/ ')")
+write(*,"('')")
+write(*,"(' Parallel Fortran Quadrature of Polynomials ')")
 
 write(*,"(' Enter the polynomial order: ')")
 read(*,*) order
