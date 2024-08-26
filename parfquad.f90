@@ -108,6 +108,30 @@ function parallel_quadrature(order, coefficients, bounds, num_pts_in, num_cpu_in
 
 end function parallel_quadrature
 
+function analytical(order, coefficients, bounds) result(ana)
+
+	! Input variables
+	integer, intent(in) :: order
+	real, dimension(order+1), intent(in) :: coefficients ! e.g., c_0 + c_1 * x + c_2 * x^2 + ...
+	real, dimension(2), intent(in) :: bounds ! assume evaluating at bounds(1) and bounds(2)
+
+	! Internal variables
+	real :: xi, xf, yi, yf, ana
+	integer :: i
+
+	! Analytical integration is sum( c_i / (i+1) * x^(i+1)) evaluated at end points
+	xi = bounds(1)
+	xf = bounds(2)
+	yi = 0.0
+	yf = 0.0
+	do i = 1,order+1
+		yi = yi + coefficients(i) * xi**i / real(i)
+		yf = yf + coefficients(i) * xf**i / real(i)
+	end do
+	ana = yf - yi
+
+end function analytical
+
 end module parflib
 
 program main
@@ -115,7 +139,7 @@ program main
 use parflib
 
 integer :: order, num_pts_in, num_cpu_in, i
-real :: quad
+real :: quad, ana
 real, dimension(:), allocatable :: coefficients
 real, dimension(2) :: bounds
 integer :: num_pts, num_cpu
@@ -151,5 +175,9 @@ read(*,*) num_cpu
 quad = parallel_quadrature(order, coefficients, bounds, num_pts, num_cpu)
 
 write(*, "(' Quadrature result: ',ES14.7)") quad
+
+ana = analytical(order, coefficients, bounds)
+
+write(*, "(' Analytical result: ',ES14.7)") ana
 
 end program main
