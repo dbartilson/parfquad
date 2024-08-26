@@ -44,6 +44,17 @@ function parallel_quadrature(order, coefficients, bounds, num_pts_in, num_cpu_in
 		stop
 	endif
 
+	! Provide user confirmation of polynomial and bounds
+	write(*, "(' Integrating polynomial: ')", advance="no") 
+	write(*, "(ES9.2)", advance="no") coefficients(0)
+	if(order > 1) then
+		do j = 2,order+1
+			write(*, "(' + (',ES9.2,')x^',i0)", advance="no") coefficients(j), j-1
+		end do
+	end if
+	write(*, "()") ! Finally advance
+	write(*, "(' Between bounds: [',ES9.2,ES9.2,']')") bounds(1), bounds(2)
+
 	if(present(num_cpu_in)) then
 		num_cpu = num_cpu_in
 	else 
